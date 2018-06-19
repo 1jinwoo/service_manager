@@ -783,6 +783,116 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
 });
 
 
+// [admin] add service details by service_id
+router.post('/admin/add_service_details', verifyAdminToken, function(req, res, next){
+    if(!req.body.service_id || !req.body.service_details_content){
+        res.status(401).json({
+            error_message: "REQUIRED FEILDS: (service_id, service_details_content)"
+        });
+    } else {
+        pool.getConnection(function(error, connection){
+            if(error){
+                if(typeof connection !== 'undefined'){
+                    connection.release();
+                }
+                next(error);
+            } else {
+                var contents = req.body.service_details_content;
+
+                for(var i = 0; i < contents.length; i++){
+                    contents[i].service_id = req.body.service_id; 
+                }
+
+                var insertString = squel.insert({separator:'\n'})
+                                        .into('service_details')
+                                        .setFieldsRows(req.body.service_details_content)
+                                        .toString();
+                connection.query(insertString, function(error, results, fields){
+                    connection.release();
+                    if(error){
+                        next(error);
+                    } else {
+                        res.status(200).json({
+                            message: "성공적으로 서비스 정보를 추가했습니다."
+                        });
+                    }
+                });
+            }
+        });
+    }
+});
+
+
+// [admin] fetch all service_details for a service
+router.get('/admin/service_details/:service_id', verifyAdminToken, function(req, res, next){
+    if(!req.params){
+        res.status(401).json({
+            error_message: "req.params is empty"
+        });
+    }
+    pool.getConnection(function(error, connection){
+        if(error){
+            if(typeof connection !== 'undefined'){
+                connection.release();
+            }
+            next(error);
+        } else {
+            var selectString = squel.select({separator:'\n'})
+                                    .from('service_details')
+                                    .field('service_details_id')
+                                    .field('service_id')
+                                    .field('service_details_content')
+                                    .where('service_id =?', req.params.service_id)
+                                    .toString();
+            connection.query(selectString, function(error, results, fields){
+                connection.release();
+                if(error){
+                    next(error);
+                } else {
+                    res.status(200).json({
+                        message: "성공적으로 요청하신 서비스에 해당하는 서비스 정보를 가져왔습니다.",
+                        results
+                    });
+                }
+            });
+        }
+    });
+});
+
+
+// [admin] delete service details by service_details_id
+router.delete('/admin/delete_service_details', verifyAdminToken, function(req, res, next){
+    if(!req.body.service_details_id){
+        res.status(401).json({
+            error_message: "REQUIRED FIELDS: (service_details_id)"
+        });
+    }
+    pool.getConnection(function(error, connection){
+        if(error){
+            if(typeof connection !== 'undefined'){
+                connection.release();
+            }
+            next(error);
+        } else {
+            var deleteString = squel.delete({separator:'\n'})
+                                    .from('service_details')
+                                    .where('service_details_id = ?', req.body.service_details_id)
+                                    .toString();
+            connection.query(deleteString, function(error, results, fields){
+                connection.release();
+                if(error){
+                    next(error);
+                } else {
+                    res.status(200).json({
+                        message: "해당 서비스 정보를 삭제했습니다."
+                    });
+                }
+            });
+        }
+    });
+});
+
+
 // [admin] request payment
 router.post('/admin/request_payment', verifyAdminToken, function(req, res, next){
     if(!req.body.service_id || !req.body.payment_amount){
@@ -1090,12 +1200,13 @@ router.get('/admin/view_services/:user_id', verifyAdminToken, function(req, res,
         } else {
             var selectString = squel.select({separator:'\n'})
                                     .from('service')
-                                    .field('service_id')
+                                    .left_join('service_details', null, 'service.service_id = service_details.service_id')
+                                    .field('service.service_id')
                                     .field('user_id')
                                     .field('service_name')
                                     .field('service_start_date')
                                     .field('service_end_date')
-                                    .field('service_details')
+                                    .field('service_details_content')
                                     .where('user_id = ?', req.params.user_id)
                                     .toString();
             connection.query(selectString, function(error, results, fields){
