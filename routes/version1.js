@@ -628,12 +628,24 @@ router.put('/admin/change_password', verifyAdminToken, function(req, res, next){
 
 // [admin] create service
 router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
+    /*
+    json format
+    {
+	"user_id":10,
+	"service_name":"Homepage",
+	"service_start_date":"2018-06-14 12:12:56",
+	"service_end_date":"2018-06-15 16:12:56",
+	"service_details_content":[{"service_details_content":"service details row 1"},
+		{"service_details_content":"service details row 2"},
+		{"service_details_content":"service details row 3"}
+	]
+}
+    */
     if(!req.body.user_id || !req.body.service_name || !req.body.service_start_date || !req.body.service_end_date){
         res.status(401).json({
             error_message: "REQUIERED FIELDS : (user_id, service_name, service_start_date, service_end_date)"
         });
-    }
-    else {
+    } else {
         pool.getConnection(function(error, connection){
             if(error){
                 if(typeof connection !== 'undefined'){
@@ -645,35 +657,55 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                     if(error){
                         connection.release();
                         next(error);
-                    }
-                    var insertString = squel.insert({separator:'\n'})
-                                            .into('service')
-                                            .set('user_id', req.body.user_id)
-                                            .set('service_name', req.body.service_name)
-                                            .set('service_start_date', req.body.service_start_date)
-                                            .set('service_end_date', req.body.service_end_date)
-                                            .set('service_details', req.body.service_details)
-                                            .toString();
-                    connection.query(insertString, function(error, results, fields){
-                        if(error){
-                            return connection.rollback(function(){
-                                connection.release();
-                                next(error);
-                            });
-                        }
-                        connection.commit(function(error){
+                    } else {
+                        var insertString = squel.insert({separator:'\n'})
+                                                .into('service')
+                                                .set('user_id', req.body.user_id)
+                                                .set('service_name', req.body.service_name)
+                                                .set('service_start_date', req.body.service_start_date)
+                                                .set('service_end_date', req.body.service_end_date)
+                                                .toString();
+                        connection.query(insertString, function(error, results, fields){
                             if(error){
                                 return connection.rollback(function(){
                                     connection.release();
                                     next(error);
                                 });
+                            } else {
+                                var contents = req.body.service_details_content;
+
+                                for(var i = 0; i < contents.length; i++){
+                                    contents[i].service_id = results.insertId;
+                                }
+
+                                var insertString = squel.insert({separator:'\n'})
+                                                        .into('service_details')
+                                                        .setFieldsRows(contents)
+                                                        .toString();
+                                connection.query(insertString, function(error, results, fields){
+                                    if(error){
+                                        return connection.rollback(function(){
+                                            connection.release();
+                                            next(error);
+                                        });
+                                    } else {
+                                        connection.commit(function(error){
+                                            if(error){
+                                                return connection.rollback(function(){
+                                                    connection.release();
+                                                    next(error);
+                                                });
+                                            }
+                                            connection.release();
+                                            res.status(200).json({
+                                                message: "해당 서비스가 성공적으로 추가되었습니다."
+                                            })
+                                        });
+                                    }
+                                });
                             }
-                            connection.release();
-                            res.status(200).json({
-                                message: "해당 서비스가 성공적으로 추가되었습니다."
-                            })
-                        })
-                    });
+                        });
+                    }
                 });
             }
         });
@@ -695,22 +727,58 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                 connection.release();
             }
             next(error);
-        } 
-
-        var deleteString = squel.delete({separator:'\n'})
-                                .from('service')
-                                .where('service_id = ?', req.body.service_id)
-                                .toString();
-        connection.query(deleteString, function(error, results, fields){
-            connection.release();
-            if(error){
-                next(error);
-            }
-
-            res.status(200).json({
-                message: "성공적으로 해당 서비스를 삭제하였습니다."
+        } else {
+            connection.beginTransaction(function(error){
+                if(error){
+                    return connection.rollback(function(){
+                        connection.release();
+                        next(error);
+                    });
+                } else {
+                    var deleteString = squel.delete({separator:'\n'})
+                                            .from('service_details')
+                                            .where('service_id = ?', req.body.service_id)
+                                            .toString();
+                    connection.query(deleteString, function(error, results, fields){
+                        if(error){
+                            return connection.rollback(function(){
+                                connection.release();
+                                error.query_index = 0;
+                                next(error);
+                            });
+                        } else {
+                            var deleteString = squel.delete({separator:'\n'})
+                                                    .from('service')
+                                                    .where('service_id = ?', req.body.service_id)
+                                                    .toString();
+                            connection.query(deleteString, function(error, results, fields){
+                                if(error){
+                                    return connection.rollback(function(){
+                                        connection.release();
+                                        error.query_index = 1;
+                                        next(error);
+                                    });
+                                } else {
+                                    connection.commit(function(error){
+                                        if(error){
+                                            connection.rollback(function(){
+                                                connection.release();
+                                                error.type = "commit error";
+                                                next(error);
+                                            });
+                                        } else {
+                                            res.status(200).json({
+                                                message: "성공적으로 해당 서비스를 삭제하였습니다."
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
             });
-        });
+        }
     });
 });
 
@@ -986,12 +1054,13 @@ router.get('/api/view_services', verifyToken, function(req, res, next){
         } else {
             var selectString = squel.select({separator:'\n'})
                                     .from('service')
-                                    .field('service_id')
+                                    .left_join('service_details', null, 'service.service_id = service_details.service_id')
+                                    .field('service.service_id')
                                     .field('user_id')
                                     .field('service_name')
                                     .field('service_start_date')
                                     .field('service_end_date')
-                                    .field('service_details')
+                                    .field('service_details_content')
                                     .where('user_id = ?', req.user_id)
                                     .toString();
             connection.query(selectString, function(error, results, fields){
@@ -1000,7 +1069,7 @@ router.get('/api/view_services', verifyToken, function(req, res, next){
                     next(error);
                 } else {
                     res.status(200).json({
-                        message: "고객님의 서비스를 모두 불러왔습니다.",
+                        message: "서비스 내용을 성공적으로 불러왔습니다.",
                         results
                     });
                 }
