@@ -930,7 +930,6 @@ router.post('/admin/request_payment', verifyAdminToken, function(req, res, next)
                         connection.query(insertString, function(error, results, fields){
                             connection.release();
                             if(error){
-                                console.log(error);
                                 next(error);
                             } else {
                                 res.status(200).json({
@@ -1266,20 +1265,19 @@ router.get('/api/hotline', verifyToken, function(req, res, next){
 					next(error);
                 }
 				else {
-                    console.log(base_results);
 					if (base_results[0]) {
-						var queryString = squel.select({separator:'\n'})
-								.from('hotline_message')
-								.field('user_id')
-								.field('admin_id')
-								.field('message_content')
-								.field('is_from_user')
-								.field('date_published')
-								.field('is_read')			
-								.where('user_id = ?', base_results[0].user_id)
-								.where('admin_id = ?', base_results[0].admin_id)
-								.order('date_published', true)
-								.toString();
+                        var queryString = squel.select({separator:'\n'})
+								                .from('hotline_message')
+                                                .field('user_id')
+                                                .field('admin_id')
+                                                .field('message_content')
+                                                .field('is_from_user')
+                                                .field('date_published')
+                                                .field('is_read')			
+                                                .where('user_id = ?', base_results[0].user_id)
+                                                .where('admin_id = ?', base_results[0].admin_id)
+                                                .order('date_published', true)
+                                                .toString();
 						connection.query(queryString, function(error, results, fields){
 							if (error) {
 								connection.release();
@@ -1293,7 +1291,6 @@ router.get('/api/hotline', verifyToken, function(req, res, next){
 								next(error);
 							} 
 							else {
-                                console.log(results);
 								if(results[0]){
 									var updateString = squel.update()
 															.table('hotline_message')
@@ -1305,7 +1302,6 @@ router.get('/api/hotline', verifyToken, function(req, res, next){
 															.toString();
 									
 									connection.query(updateString, function(error, results_update, fields){
-                                        console.log(results_update);
 										connection.release();
 										if (error) {
 											error.type = "connection.query"
@@ -1407,14 +1403,14 @@ router.post('/api/hotline', verifyToken, function(req, res, next){
 					if(results[0]){
 						var date_published = getDateString();
 						var postString = squel.insert({separator: "\n"})
-											.into('hotline_message')
-											.set('admin_id', results[0].admin_id)
-											.set('user_id', results[0].user_id)
-											.set('message_content', req.body.message_content)
-											.set('is_from_user', 1)
-											.set('is_read', 0)
-											.set('date_published', date_published)
-											.toString();
+										    	.into('hotline_message')
+                                                .set('admin_id', results[0].admin_id)
+                                                .set('user_id', results[0].user_id)
+                                                .set('message_content', req.body.message_content)
+                                                .set('is_from_user', 1)
+                                                .set('is_read', 0)
+                                                .set('date_published', date_published)
+                                                .toString();
 						connection.query(postString, function(error, results_message, fields){
 							connection.release();
 							if (error) {
@@ -1450,9 +1446,8 @@ router.post('/api/hotline', verifyToken, function(req, res, next){
 });
 
 
-// [admin] writes hotline message
+// [admin] writes user a hotline message
 router.post('/admin/hotline', verifyAdminToken, function(req, res, next){
-    // [Admin] admin writes user a hotline message
 if(!req.body.user_id || !req.body.message_content){
         res.status(401).json({
             error_message: "REQUIRED FIELD: (user_id, message_content)",
