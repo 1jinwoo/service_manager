@@ -28,7 +28,12 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 app.use('/v1', versionOne);
 
-app.use(function(err,req,res,next){
+app.use(function(err, req, res, next){
+	console.error(err);
+	next(err);
+});
+
+app.use(function(err, req, res, next){
 	if (err){
 		next(err);
 	}
@@ -39,7 +44,10 @@ app.use(function(err,req,res,next){
 	}
 });
 
-app.use(function(error,req,res,next){
+app.use(function(error, req, res, next){
+	if(process.env.NODE_ENV == "PRODUCTION"){
+		error.stack = null;
+	}
     res.status(error.status || 500);
     res.json({
         error:{

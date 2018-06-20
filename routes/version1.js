@@ -28,6 +28,12 @@ router.post('/api/login', function(req, res, next){
                 if(typeof connection !== 'undefined'){
                     connection.release();
                 }
+                error.type = "pool.getConnection";
+                error.path = "POST /api/login";
+                error.identity = "[USER]";
+                error.time = getDateString();
+                error.status = 500;
+                error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 생긴 문제일 수 있으니 잠시 후 다시 시도하세요.";
                 next(error);
             }
             else{
@@ -41,15 +47,28 @@ router.post('/api/login', function(req, res, next){
                 connection.query(queryString, function(error, results, fields){
                     connection.release();
                     if (error){
+                        error.type = "connection.query";
+                        error.path = "POST /api/login";
+                        error.identity = "[USER]";
+                        error.time = getDateString();
+                        error.status = 500;
+                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                        error.query_index = 1;
                         next(error);
                     } 
                     else{
-                        if (!!results[0]){
+                        if (results[0]){
                             var password_stored = results[0].password;
                             var passwordIsValid = bcrypt.compareSync(req.body.password, password_stored);
                             if (passwordIsValid){
                                 jwt.sign({username: req.body.username, user_id: results[0].user_id, user_first_name: results[0].user_first_name}, process.env.USER_SECRET_KEY, {expiresIn: '7d'}, function(error, token){
                                     if (error){
+                                        error.type = "jwt.sign";
+                                        error.path = "POST /api/login";
+                                        error.identity = "[USER]";
+                                        error.time = getDateString();
+                                        error.status = 500;
+                                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                         next(error);
                                     }
                                     else{
@@ -117,6 +136,12 @@ router.post('/api/register', function(req, res, next){
                 if(typeof connection !== 'undefined'){
                     connection.release();
                 }
+                error.type = "pool.getConnection";
+                error.path = "POST /api/register";
+                error.identity = "[USER]";
+                error.time = getDateString();
+                error.status = 500;
+                error.display_message = "서버 문제로 에러가 발생하였습니다.";
                 next(error);
             }
             else{
@@ -128,6 +153,13 @@ router.post('/api/register', function(req, res, next){
                 connection.query(selectString, function(error, results, fields){
                     if(error){
                         connection.release();
+                        error.type = "connection.query";
+                        error.path = "POST /api/register";
+                        error.identity = "[USER]";
+                        error.time = getDateString();
+                        error.status = 500;
+                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                        error.query_index = 1;
                         next(error);
                     }
                     if(Array.isArray(results) && !!results.length){ // checking if the select query found duplicate username
@@ -157,11 +189,24 @@ router.post('/api/register', function(req, res, next){
                         connection.query(queryString, function(error, results, fields){
                             connection.release();
                             if (error){
+                                error.type = "connection.query";
+                                error.path = "POST /api/register";
+                                error.identity = "[USER]";
+                                error.time = getDateString();
+                                error.status = 500;
+                                error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                error.query_index = 2;
                                 next(error);    
                             }
                             else{
                                 jwt.sign({ user_id: results.user_id, username: req.body.username, user_full_name: req.body.user_full_name}, process.env.USER_SECRET_KEY, {expiresIn: '7d'}, function(error, token){
                                     if (error){
+                                        error.type = "jwt.sign";
+                                        error.path = "POST /api/register";
+                                        error.identity = "[USER]";
+                                        error.time = getDateString();
+                                        error.status = 500;
+                                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                         next(error);
                                     }
                                     else{
@@ -218,8 +263,14 @@ router.put('/api/change_password', verifyToken, function(req, res, next){
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
+            error.type = "pool.getConnection";
+            error.path = "PUT /api/change_password";
+            error.identity = "[USER] " + req.user_id;
+            error.time = getDateString();
+            error.status = 500;
+            error.display_message = "서버 문제로 에러가 발생하였습니다.";
             next(error);
-        } else{
+        } else {
             var queryString = squel.select({seperator:"\n"})
                                    .from('user')
                                    .field('password')
@@ -229,6 +280,13 @@ router.put('/api/change_password', verifyToken, function(req, res, next){
             connection.query(queryString, function(error, results, fields){
                 if (error){
                     connection.release();
+                    error.type = "connection.query";
+                    error.path = "PUT /api/change_password";
+                    error.identity = "[USER] " + req.user_id;
+                    error.time = getDateString();
+                    error.status = 500;
+                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                    error.query_index = 1;
                     next(error);
                 } else{
                     var isValid = bcrypt.compareSync(req.body.password, results[0].password);
@@ -249,19 +307,32 @@ router.put('/api/change_password', verifyToken, function(req, res, next){
                                 connection.beginTransaction(function(error){
                                     if(error){
                                         connection.release();
+                                        error.type = "connection.beginTransaction";
+                                        error.path = "PUT /api/change_password";
+                                        error.identity = "[USER] " + req.user_id;
+                                        error.time = getDateString();
+                                        error.status = 500;
+                                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                         next(error);
                                     }
                                     var newPwHashed = bcrypt.hashSync(req.body.new_password, parseInt(process.env.SALT_ROUNDS));
                                     var changeQuery = squel.update({seperator:"\n"})
-                                                        .table('user')
-                                                        .set('password', newPwHashed)
-                                                        .where('username = ?', req.username)
-                                                        .where('user_id = ?', req.user_id)
-                                                        .toString();
+                                                            .table('user')
+                                                            .set('password', newPwHashed)
+                                                            .where('username = ?', req.username)
+                                                            .where('user_id = ?', req.user_id)
+                                                            .toString();
                                     connection.query(changeQuery, function(error, results, fields){
                                         if (error){
                                             return connection.rollback(function(){
                                                 connection.release();
+                                                error.type = "connection.query";
+                                                error.path = "PUT /api/change_password";
+                                                error.identity = "[USER] " + req.user_id;
+                                                error.time = getDateString();
+                                                error.status = 500;
+                                                error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                                error.query_index = 2;
                                                 next(error);
                                             });
                                         } else {
@@ -273,13 +344,26 @@ router.put('/api/change_password', verifyToken, function(req, res, next){
                                                 if(error){
                                                     return connection.rollback(function(){
                                                         connection.release();
+                                                        error.type = "connection.query";
+                                                        error.path = "PUT /api/change_password";
+                                                        error.identity = "[USER] " + req.user_id;
+                                                        error.time = getDateString();
+                                                        error.status = 500;
+                                                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                                        error.query_index = 3;
                                                         next(error);
                                                     });
                                                 }
                                                 connection.commit(function(error){
                                                     if(error){
-                                                        return connection.rollboack(function(){
+                                                        return connection.rollback(function(){
                                                             connection.release();
+                                                            error.type = "connection.commit";
+                                                            error.path = "PUT /api/change_password";
+                                                            error.identity = "[USER] " + req.user_id;
+                                                            error.time = getDateString();
+                                                            error.status = 500;
+                                                            error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                                             next(error);
                                                         });
                                                     }
@@ -291,13 +375,12 @@ router.put('/api/change_password', verifyToken, function(req, res, next){
                                         }
                                     });
                                 });
-                                
                             }
                         }
                     } else{
                         connection.release();
                         res.status(401).json({
-                            message: '입력하신 비밀번호가 일치하지 않습니다'
+                            message: '입력하신 비밀번호가 일치하지 않습니다.'
                         });
                     }
                 }
@@ -315,7 +398,8 @@ router.post('/admin/login', function(req, res, next){
             user_error_message: "필수 항목을 모두 입력하십시오."
         });
     }
-    else if(req.body.admin_username.length > 20 || req.body.admin_username.length < 4 || req.body.admin_password.length > 20 ||  req.body.admin_password.length < 4){
+    else if(req.body.admin_username.length > 20 || req.body.admin_username.length < 4 ||
+        req.body.admin_password.length > 20 ||  req.body.admin_password.length < 4){
         res.status(401).json({
             error_type: "Data Integrity Violation",
             error_message: "입력하신 파라미터 글자 숫자를 참고하세요: admin_username(4~20), password(4~20)"
@@ -327,35 +411,56 @@ router.post('/admin/login', function(req, res, next){
                 if(typeof connection !== 'undefined'){
                     connection.release();
                 }
+                error.type = "pool.getConnection";
+                error.path = "POST /admin/login";
+                error.identity = "[ADMIN]";
+                error.time = getDateString();
+                error.status = 500;
+                error.display_message = "서버 문제로 에러가 발생하였습니다.";
                 next(error);
             }
-            else{
+            else {
                 var queryString = squel.select({separator: "\n"})
-                                    .from('admin')
-                                    .field('admin_id')
-                                    .field('admin_password')
-                                    .field('admin_name')
-                                    .where('admin_username = ?', req.body.admin_username)
-                                    .toString();
+                                        .from('admin')
+                                        .field('admin_id')
+                                        .field('admin_password')
+                                        .field('admin_name')
+                                        .where('admin_username = ?', req.body.admin_username)
+                                        .toString();
                 connection.query(queryString, function(error, results, fields){
                     connection.release();
                     if (error){
+                        error.type = "connection.query";
+                        error.path = "POST /admin/login";
+                        error.identity = "[ADMIN]";
+                        error.time = getDateString();
+                        error.status = 500;
+                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                        error.query_index = 1;
                         next(error);
                     } 
                     else {
-                        if (!!results[0]){
+                        if (results[0]){
                             var password_stored = results[0].admin_password;
                             var passwordIsValid = bcrypt.compareSync(req.body.admin_password, password_stored);
                             if (passwordIsValid){
-                                jwt.sign({admin_id: results[0].admin_id, admin_username: req.body.admin_username, admin_name: results[0].admin_name}, process.env.ADMIN_SECRET_KEY, {expiresIn: '7d'}, function(error, token){
+                                jwt.sign({admin_id: results[0].admin_id, admin_username: req.body.admin_username,
+                                    admin_name: results[0].admin_name}, process.env.ADMIN_SECRET_KEY, {expiresIn: '7d'},
+                                    function(error, token){
                                     if (error){
+                                        error.type = "jwt.sign";
+                                        error.path = "POST /admin/login";
+                                        error.identity = "[ADMIN]";
+                                        error.time = getDateString();
+                                        error.status = 500;
+                                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                         next(error);
                                     }
                                     else{
-                                    res.status(200).json({
-                                        auth: true,
-                                        token: token
-                                    });
+                                        res.status(200).json({
+                                            auth: true,
+                                            token: token
+                                        });
                                     }
                                 });
                             }
@@ -390,11 +495,13 @@ router.post('/admin/register', function(req, res, next){
             error_message: "REQUIRED FIELDS : (admin_username, admin_password, admin_name)",
             user_error_message: "필수 항목을 모두 입력하십시오."
         });
-    }else if(req.body.admin_username.length < 4 || req.body.admin_username.length > 20 ||
+    } 
+    
+    if(req.body.admin_username.length < 4 || req.body.admin_username.length > 20 ||
         req.body.admin_password.length < 4 || req.body.admin_password.length > 20){
         res.status(401).json({
             error_type: "Data Integrity Violation",
-            error_message: "입력하신 파라미터 글자 숫자를 참고하세요: admin_username(4~20), admin_password(4~20), admin_phone(~20), admin_email(~30)"
+            error_message: "입력하신 파라미터 글자 숫자를 참고하세요: admin_username(4~20), admin_password(4~20)"
         });
     }
 
@@ -403,6 +510,12 @@ router.post('/admin/register', function(req, res, next){
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
+            error.type = "pool.getConnection";
+            error.path = "POST /admin/register";
+            error.identity = "[ADMIN]";
+            error.time = getDateString();
+            error.status = 500;
+            error.display_message = "서버 문제로 에러가 발생하였습니다.";
             next(error);
         } else{
             var selectString = squel.select({separator:'\n'})
@@ -413,6 +526,13 @@ router.post('/admin/register', function(req, res, next){
             connection.query(selectString, function(error, results, fields){
                 if(error){
                     connection.release();
+                    error.type = "connection.query";
+                    error.path = "POST /admin/register";
+                    error.identity = "[ADMIN]";
+                    error.time = getDateString();
+                    error.status = 500;
+                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                    error.query_index = 1;
                     next(error);
                 }
                 if(Array.isArray(results) && !!results.length){
@@ -427,6 +547,12 @@ router.post('/admin/register', function(req, res, next){
                     connection.beginTransaction(function(error){
                         if (error){
                             connection.release();
+                            error.type = "connection.beginTransaction";
+                            error.path = "POST /admin/register";
+                            error.identity = "[ADMIN]";
+                            error.time = getDateString();
+                            error.status = 500;
+                            error.display_message = "서버 문제로 에러가 발생하였습니다.";
                             next(error);
                         }
                         var hashedPassword = bcrypt.hashSync(req.body.admin_password, parseInt(process.env.SALT_ROUNDS));
@@ -440,6 +566,13 @@ router.post('/admin/register', function(req, res, next){
                             if(error){
                                 return connection.rollback(function() {
                                     connection.release();
+                                    error.type = "connection.query";
+                                    error.path = "POST /admin/register";
+                                    error.identity = "[ADMIN]";
+                                    error.time = getDateString();
+                                    error.status = 500;
+                                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                    error.query_index = 2;
                                     next(error);
                                 });
                             }
@@ -455,10 +588,17 @@ router.post('/admin/register', function(req, res, next){
                                 if (error){
                                     return connection.rollback(function() {
                                         connection.release();
+                                        error.type = "connection.query";
+                                        error.path = "POST /admin/register";
+                                        error.identity = "[ADMIN]";
+                                        error.time = getDateString();
+                                        error.status = 500;
+                                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                        error.query_index = 3;
                                         next(error);
                                     });
                                 }
-                                if (!!results) {
+                                if (results) {
                                     jwt.sign({admin_username: results[0].admin_username, 
                                     admin_id: results.insertId, admin_name: results[0].admin_name},
                                     process.env.ADMIN_SECRET_KEY, {expiresIn: '7d'}, 
@@ -466,6 +606,12 @@ router.post('/admin/register', function(req, res, next){
                                         if (error){
                                             return connection.rollback(function(){
                                                 connection.release();
+                                                error.type = "jwt.sign";
+                                                error.path = "POST /admin/register";
+                                                error.identity = "[ADMIN]";
+                                                error.time = getDateString();
+                                                error.status = 500;
+                                                error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                                 next(error);
                                             });
                                         }
@@ -473,6 +619,12 @@ router.post('/admin/register', function(req, res, next){
                                             if (error){
                                                 return connection.rollback(function(){
                                                     connection.release();
+                                                    error.type = "connection.commit";
+                                                    error.path = "POST /admin/register";
+                                                    error.identity = "[ADMIN]";
+                                                    error.time = getDateString();
+                                                    error.status = 500;
+                                                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                                     next(error);
                                                 });
                                             }
@@ -534,6 +686,12 @@ router.put('/admin/change_password', verifyAdminToken, function(req, res, next){
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
+            error.type = "pool.getConnection";
+            error.path = "PUT /admin/change_password";
+            error.identity = "[ADMIN] " + req.admin_id;
+            error.time = getDateString();
+            error.status = 500;
+            error.display_message = "서버 문제로 에러가 발생하였습니다.";
             next(error);
         } else{
             var queryString = squel.select({seperator:"\n"})
@@ -544,18 +702,21 @@ router.put('/admin/change_password', verifyAdminToken, function(req, res, next){
             connection.query(queryString, function(error, results, fields){
                 if (error){
                     connection.release();
-                    res.status(500).json({
-                        message: error.message,
-                        stack: error.stack
-                    });
+                    error.type = "connection.query";
+                    error.path = "PUT /admin/change_password";
+                    error.identity = "[ADMIN] " + req.admin_id;
+                    error.time = getDateString();
+                    error.status = 500;
+                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                    error.query_index = 1;
+                    next(error);
                 } else{
                     var isValid = bcrypt.compareSync(req.body.admin_password, results[0].admin_password);
                     if (isValid){
                         if (req.body.new_password !== req.body.new_password_confirm){
                             connection.release();
                             res.status(401).json({
-                                status: "새로운 비밀번호와 비밀번호확인이 일치하지 않습니다.",
-
+                                status: "새로운 비밀번호와 비밀번호확인이 일치하지 않습니다."
                             });
                         } else{
                             if (req.body.admin_password === req.body.new_password){
@@ -567,6 +728,12 @@ router.put('/admin/change_password', verifyAdminToken, function(req, res, next){
                                 connection.beginTransaction(function(error){
                                     if(error){
                                         connection.release();
+                                        error.type = "connection.beginTransaction";
+                                        error.path = "PUT /admin/change_password";
+                                        error.identity = "[ADMIN] " + req.admin_id;
+                                        error.time = getDateString();
+                                        error.status = 500;
+                                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                         next(error);
                                     }
                                     var newPwHashed = bcrypt.hashSync(req.body.new_password, parseInt(process.env.SALT_ROUNDS));
@@ -579,6 +746,13 @@ router.put('/admin/change_password', verifyAdminToken, function(req, res, next){
                                         if (error){
                                             return connection.rollback(function(){
                                                 connection.release();
+                                                error.type = "connection.query";
+                                                error.path = "PUT /admin/change_password";
+                                                error.identity = "[ADMIN] " + req.admin_id;
+                                                error.time = getDateString();
+                                                error.status = 500;
+                                                error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                                error.query_index = 2;
                                                 next(error);
                                             });
                                         } else {
@@ -590,6 +764,13 @@ router.put('/admin/change_password', verifyAdminToken, function(req, res, next){
                                                 if(error){
                                                     return connection.rollback(function(){
                                                         connection.release();
+                                                        error.type = "connection.query";
+                                                        error.path = "PUT /admin/change_password";
+                                                        error.identity = "[ADMIN] " + req.admin_id;
+                                                        error.time = getDateString();
+                                                        error.status = 500;
+                                                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                                        error.query_index = 3;
                                                         next(error);
                                                     });
                                                 } else {
@@ -597,6 +778,12 @@ router.put('/admin/change_password', verifyAdminToken, function(req, res, next){
                                                         if(error){
                                                             return connection.rollback(function(){
                                                                 connection.release();
+                                                                error.type = "connection.commit";
+                                                                error.path = "PUT /admin/change_password";
+                                                                error.identity = "[ADMIN] " + req.admin_id;
+                                                                error.time = getDateString();
+                                                                error.status = 500;
+                                                                error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                                                 next(error);
                                                             });
                                                         } else {
@@ -608,8 +795,7 @@ router.put('/admin/change_password', verifyAdminToken, function(req, res, next){
                                                 }
                                             });
                                         }
-                                });
-                                
+                                    });
                                 });
                             }
                         }
@@ -636,14 +822,19 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
 	"service_start_date":"2018-06-14 12:12:56",
 	"service_end_date":"2018-06-15 16:12:56",
 	"service_details_content":[{"service_details_content":"service details row 1"},
-		{"service_details_content":"service details row 2"},
-		{"service_details_content":"service details row 3"}
-	]
-}
+		    {"service_details_content":"service details row 2"},
+		    {"service_details_content":"service details row 3"}
+	    ]
+    }
     */
     if(!req.body.user_id || !req.body.service_name || !req.body.service_start_date || !req.body.service_end_date){
         res.status(401).json({
             error_message: "REQUIERED FIELDS : (user_id, service_name, service_start_date, service_end_date)"
+        });
+    } else if(req.body.service_name.length > 45){
+        res.status(401).json({
+            error_type:"Data Integrity Violoation",
+            error_message: "서비스 이름은 45자 이하여야 합니다."
         });
     } else {
         pool.getConnection(function(error, connection){
@@ -651,11 +842,23 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                 if(typeof connection !== 'undefined'){
                     connection.release();
                 }
+                error.type = "pool.getConnection";
+                error.path = "POST /admin/create_service";
+                error.identity = "[ADMIN] " + req.admin_id;
+                error.time = getDateString();
+                error.status = 500;
+                error.display_message = "서버 문제로 에러가 발생하였습니다.";
                 next(error);
             } else {
                 connection.beginTransaction(function(error){
                     if(error){
                         connection.release();
+                        error.type = "connection.beginTransaction";
+                        error.path = "POST /admin/create_service";
+                        error.identity = "[ADMIN] " + req.admin_id;
+                        error.time = getDateString();
+                        error.status = 500;
+                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
                         next(error);
                     } else {
                         var insertString = squel.insert({separator:'\n'})
@@ -669,6 +872,13 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                             if(error){
                                 return connection.rollback(function(){
                                     connection.release();
+                                    error.type = "connection.query";
+                                    error.path = "POST /admin/create_service";
+                                    error.identity = "[ADMIN] " + req.admin_id;
+                                    error.time = getDateString();
+                                    error.status = 500;
+                                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                    error.query_index = 1;
                                     next(error);
                                 });
                             } else {
@@ -686,6 +896,13 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                                     if(error){
                                         return connection.rollback(function(){
                                             connection.release();
+                                            error.type = "connection.query";
+                                            error.path = "POST /admin/create_service";
+                                            error.identity = "[ADMIN] " + req.admin_id;
+                                            error.time = getDateString();
+                                            error.status = 500;
+                                            error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                            error.query_index = 2;
                                             next(error);
                                         });
                                     } else {
@@ -693,13 +910,19 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                                             if(error){
                                                 return connection.rollback(function(){
                                                     connection.release();
+                                                    error.type = "connection.commit";
+                                                    error.path = "POST /admin/create_service";
+                                                    error.identity = "[ADMIN] " + req.admin_id;
+                                                    error.time = getDateString();
+                                                    error.status = 500;
+                                                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                                     next(error);
                                                 });
                                             }
                                             connection.release();
                                             res.status(200).json({
                                                 message: "해당 서비스가 성공적으로 추가되었습니다."
-                                            })
+                                            });
                                         });
                                     }
                                 });
@@ -726,12 +949,24 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
+            error.type = "pool.getConnection";
+            error.path = "DELETE /admin/delete_service";
+            error.identity = "[ADMIN] " + req.admin_id;
+            error.time = getDateString();
+            error.status = 500;
+            error.display_message = "서버 문제로 에러가 발생하였습니다.";
             next(error);
         } else {
             connection.beginTransaction(function(error){
                 if(error){
                     return connection.rollback(function(){
                         connection.release();
+                        error.type = "connection.beginTransaction";
+                        error.path = "DELETE /admin/delete_service";
+                        error.identity = "[ADMIN] " + req.admin_id;
+                        error.time = getDateString();
+                        error.status = 500;
+                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
                         next(error);
                     });
                 } else {
@@ -743,7 +978,13 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                         if(error){
                             return connection.rollback(function(){
                                 connection.release();
-                                error.query_index = 0;
+                                error.type = "connection.query";
+                                error.path = "DELETE /admin/delete_service";
+                                error.identity = "[ADMIN] " + req.admin_id;
+                                error.time = getDateString();
+                                error.status = 500;
+                                error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                error.query_index = 1;
                                 next(error);
                             });
                         } else {
@@ -755,7 +996,13 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                                 if(error){
                                     return connection.rollback(function(){
                                         connection.release();
-                                        error.query_index = 1;
+                                        error.type = "connection.query";
+                                        error.path = "DELETE /admin/delete_service";
+                                        error.identity = "[ADMIN] " + req.admin_id;
+                                        error.time = getDateString();
+                                        error.status = 500;
+                                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                        error.query_index = 2;
                                         next(error);
                                     });
                                 } else {
@@ -763,7 +1010,12 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                                         if(error){
                                             connection.rollback(function(){
                                                 connection.release();
-                                                error.type = "commit error";
+                                                error.type = "connection.commit";
+                                                error.path = "DELETE /admin/delete_service";
+                                                error.identity = "[ADMIN] " + req.admin_id;
+                                                error.time = getDateString();
+                                                error.status = 500;
+                                                error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                                 next(error);
                                             });
                                         } else {
@@ -795,6 +1047,12 @@ router.post('/admin/add_service_details', verifyAdminToken, function(req, res, n
                 if(typeof connection !== 'undefined'){
                     connection.release();
                 }
+                error.type = "pool.getConnection";
+                error.path = "POST /admin/add_service_details";
+                error.identity = "[ADMIN] " + req.admin_id;
+                error.time = getDateString();
+                error.status = 500;
+                error.display_message = "서버 문제로 에러가 발생하였습니다.";
                 next(error);
             } else {
                 var contents = req.body.service_details_content;
@@ -810,6 +1068,13 @@ router.post('/admin/add_service_details', verifyAdminToken, function(req, res, n
                 connection.query(insertString, function(error, results, fields){
                     connection.release();
                     if(error){
+                        error.type = "connection.query";
+                        error.path = "POST /admin/add_service_details";
+                        error.identity = "[ADMIN] " + req.admin_id;
+                        error.time = getDateString();
+                        error.status = 500;
+                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                        error.query_index = 1;
                         next(error);
                     } else {
                         res.status(200).json({
@@ -835,6 +1100,12 @@ router.get('/admin/service_details/:service_id', verifyAdminToken, function(req,
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
+            error.type = "pool.getConnection";
+            error.path = "GET /admin/service_details/:service_id";
+            error.identity = "[ADMIN] " + req.admin_id;
+            error.time = getDateString();
+            error.status = 500;
+            error.display_message = "서버 문제로 에러가 발생하였습니다.";
             next(error);
         } else {
             var selectString = squel.select({separator:'\n'})
@@ -847,6 +1118,13 @@ router.get('/admin/service_details/:service_id', verifyAdminToken, function(req,
             connection.query(selectString, function(error, results, fields){
                 connection.release();
                 if(error){
+                    error.type = "connection.query";
+                    error.path = "GET /admin/service_details/:service_id";
+                    error.identity = "[ADMIN] " + req.admin_id;
+                    error.time = getDateString();
+                    error.status = 500;
+                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                    error.query_index = 1;
                     next(error);
                 } else {
                     res.status(200).json({
@@ -872,6 +1150,12 @@ router.delete('/admin/delete_service_details', verifyAdminToken, function(req, r
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
+            error.type = "pool.getConnection";
+            error.path = "DELETE /admin/delete_service_details";
+            error.identity = "[ADMIN] " + req.admin_id;
+            error.time = getDateString();
+            error.status = 500;
+            error.display_message = "서버 문제로 에러가 발생하였습니다.";
             next(error);
         } else {
             var deleteString = squel.delete({separator:'\n'})
@@ -881,6 +1165,13 @@ router.delete('/admin/delete_service_details', verifyAdminToken, function(req, r
             connection.query(deleteString, function(error, results, fields){
                 connection.release();
                 if(error){
+                    error.type = "conneciton.query";
+                    error.path = "DELETE /admin/delete_service_details";
+                    error.identity = "[ADMIN] " + req.admin_id;
+                    error.time = getDateString();
+                    error.status = 500;
+                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                    error.query_index = 1;
                     next(error);
                 } else {
                     res.status(200).json({
@@ -905,6 +1196,12 @@ router.post('/admin/request_payment', verifyAdminToken, function(req, res, next)
                 if(typeof connection !== 'undefined'){
                     connection.release();
                 }
+                error.type = "pool.getConnection";
+                error.path = "POST /admin/request_payment";
+                error.identity = "[ADMIN] " + req.admin_id;
+                error.time = getDateString();
+                error.status = 500;
+                error.display_message = "서버 문제로 에러가 발생하였습니다.";
                 next(error);
             } else {
                 var selectString = squel.select({separator:'\n'})
@@ -919,6 +1216,13 @@ router.post('/admin/request_payment', verifyAdminToken, function(req, res, next)
                 connection.query(selectString, function(error, results, fields){
                     if(error){
                         connection.release();
+                        error.type = "connection.query";
+                        error.path = "POST /admin/request_payment";
+                        error.identity = "[ADMIN] " + req.admin_id;
+                        error.time = getDateString();
+                        error.status = 500;
+                        error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                        error.query_index = 1;
                         next(error);
                     } else {
                         var insertString = squel.insert({separator:'\n'})
@@ -930,6 +1234,13 @@ router.post('/admin/request_payment', verifyAdminToken, function(req, res, next)
                         connection.query(insertString, function(error, results, fields){
                             connection.release();
                             if(error){
+                                error.type = "connection.query";
+                                error.path = "POST /admin/request_payment";
+                                error.identity = "[ADMIN] " + req.admin_id;
+                                error.time = getDateString();
+                                error.status = 500;
+                                error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                error.query_index = 2;
                                 next(error);
                             } else {
                                 res.status(200).json({
@@ -938,7 +1249,6 @@ router.post('/admin/request_payment', verifyAdminToken, function(req, res, next)
                             }
                         });
                     }
-                    
                 });
             }
         });
@@ -958,6 +1268,12 @@ router.put('/api/make_payment', verifyToken, function(req, res, next){
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
+            error.type = "pool.getConnection";
+            error.path = "PUT /api/make_payment";
+            error.identity = "[USER] " + req.user_id;
+            error.time = getDateString();
+            error.status = 500;
+            error.display_message = "서버 문제로 에러가 발생하였습니다.";
             next(error);
         } else {
             var selectString = squel.select({separator:'\n'})
@@ -969,7 +1285,13 @@ router.put('/api/make_payment', verifyToken, function(req, res, next){
             connection.query(selectString, function(error, results, fields){
                 if(error){
                     connection.release();
-                    error.query_index = 0;
+                    error.type = "connection.query";
+                    error.path = "PUT /api/make_payment";
+                    error.identity = "[USER] " + req.user_id;
+                    error.time = getDateString();
+                    error.status = 500;
+                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                    error.query_index = 1;
                     next(error);
                 } else {
                     var selectString = squel.select({separator:'\n'})
@@ -980,7 +1302,13 @@ router.put('/api/make_payment', verifyToken, function(req, res, next){
                     connection.query(selectString, function(error, select_results, fields){
                         if(error){
                             connection.release();
-                            error.query_index = 1;
+                            error.type = "connection.query";
+                            error.path = "PUT /api/make_payment";
+                            error.identity = "[USER] " + req.user_id;
+                            error.time = getDateString();
+                            error.status = 500;
+                            error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                            error.query_index = 2;
                             next(error);
                         } else {
                             var selectString = squel.select({separator:'\n'})
@@ -991,7 +1319,13 @@ router.put('/api/make_payment', verifyToken, function(req, res, next){
                             connection.query(selectString, function(error, results, fields){
                                 if(error){
                                     connection.release();
-                                    error.query_index = 2;
+                                    error.type = "connection.query";
+                                    error.path = "PUT /api/make_payment";
+                                    error.identity = "[USER] " + req.user_id;
+                                    error.time = getDateString();
+                                    error.status = 500;
+                                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                    error.query_index = 3;
                                     next(error);
                                 } else {
                                     if(req.user_id === select_results[0].user_id){ // request is from valid user
@@ -1005,7 +1339,13 @@ router.put('/api/make_payment', verifyToken, function(req, res, next){
                                             connection.query(updateString, function(error, results, fields){
                                                 if(error){
                                                     connection.release();
-                                                    error.query_index = 3;
+                                                    error.type = "connection.query";
+                                                    error.path = "PUT /api/make_payment";
+                                                    error.identity = "[USER] " + req.user_id;
+                                                    error.time = getDateString();
+                                                    error.status = 500;
+                                                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                                                    error.query_index = 4;
                                                     next(error);
                                                 } else {
                                                     if(pyamentLeftover > 0){
@@ -1051,7 +1391,7 @@ router.get('/admin/search_user_id/:user_id', verifyAdminToken, function(req, res
 			}
 			error.type = "pool.getConnection";
 			error.path = "GET /admin/search_user_id/:user_id";
-			error.identity = "[ADMIN]" + req.admin_id;
+			error.identity = "[ADMIN] " + req.admin_id;
 			error.time = getDateString();
 			error.status = 500;
 			error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 걸린 문제일 수 있으니, 잠시 후 다시 시도해주시기 바랍니다."
@@ -1071,7 +1411,7 @@ router.get('/admin/search_user_id/:user_id', verifyAdminToken, function(req, res
 				if (error) {	
 					error.type = "connection.query"
 					error.path = "GET /admin/search_user_id/:user_id";
-					error.identity = "[ADMIN]" + req.admin_id;
+					error.identity = "[ADMIN] " + req.admin_id;
 					error.time = getDateString();
 					error.status = 500;
 					error.display_message = "서버 문제로 에러가 발생하였습니다."
@@ -1106,7 +1446,7 @@ router.get('/admin/search_username/:username', verifyAdminToken, function(req, r
 			}
 			error.type = "pool.getConnection";
 			error.path = "GET /admin/search_username/:username";
-			error.identity = "[ADMIN]" + req.admin_id;
+			error.identity = "[ADMIN] " + req.admin_id;
 			error.time = getDateString();
 			error.status = 500;
 			error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 걸린 문제일 수 있으니, 잠시 후 다시 시도해주시기 바랍니다."
@@ -1126,7 +1466,7 @@ router.get('/admin/search_username/:username', verifyAdminToken, function(req, r
 				if (error) {	
 					error.type = "connection.query"
 					error.path = "GET /admin/search_username/:username";
-					error.identity = "[ADMIN]" + req.admin_id;
+					error.identity = "[ADMIN] " + req.admin_id;
 					error.time = getDateString();
 					error.status = 500;
 					error.display_message = "서버 문제로 에러가 발생하였습니다."
@@ -1159,6 +1499,12 @@ router.get('/api/view_services', verifyToken, function(req, res, next){
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
+            error.type = "pool.getConnection";
+            error.path = "GET /api/view_services";
+            error.identity = "[USER] " + req.user_id;
+            error.time = getDateString();
+            error.status = 500;
+            error.display_message = "서버 문제로 에러가 발생하였습니다.";
             next(error);
         } else {
             var selectString = squel.select({separator:'\n'})
@@ -1175,6 +1521,13 @@ router.get('/api/view_services', verifyToken, function(req, res, next){
             connection.query(selectString, function(error, results, fields){
                 connection.release();
                 if(error){
+                    error.type = "connection.query";
+                    error.path = "GET /api/view_services";
+                    error.identity = "[USER] " + req.user_id;
+                    error.time = getDateString();
+                    error.status = 500;
+                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                    error.query_index = 1;
                     next(error);
                 } else {
                     res.status(200).json({
@@ -1195,6 +1548,12 @@ router.get('/admin/view_services/:user_id', verifyAdminToken, function(req, res,
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
+            error.type = "pool.getConnection";
+            error.path = "GET /admin/view_services/:user_id";
+            error.identity = "[ADMIN] " + req.admin_id;
+            error.time = getDateString();
+            error.status = 500;
+            error.display_message = "서버 문제로 에러가 발생하였습니다.";
             next(error);
         } else {
             var selectString = squel.select({separator:'\n'})
@@ -1211,6 +1570,13 @@ router.get('/admin/view_services/:user_id', verifyAdminToken, function(req, res,
             connection.query(selectString, function(error, results, fields){
                 connection.release();
                 if(error){
+                    error.type = "connection.query";
+                    error.path = "GET /admin/view_services/:user_id";
+                    error.identity = "[ADMIN] " + req.admin_id;
+                    error.time = getDateString();
+                    error.status = 500;
+                    error.display_message = "서버 문제로 에러가 발생하였습니다.";
+                    error.query_index = 1;
                     next(error);
                 } else {
                     res.status(200).json({
@@ -1239,10 +1605,10 @@ router.get('/api/hotline', verifyToken, function(req, res, next){
 			}
 			error.type = "pool.getConnection";
 			error.path = "GET /api/hotline";
-			error.identity = "[USER]" + req.user_id;
+			error.identity = "[USER] " + req.user_id;
 			error.time = getDateString();
 			error.status = 500;
-			error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 걸린 문제일 수 있으니, 잠시 후 다시 시도해주시기 바랍니다. <br/> 문의 전화: 02-540-7912 이메일: codingbabyfood@gmail.com"
+			error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 생긴 문제일 수 있으니, 잠시 후 다시 시도해주시기 바랍니다."
 			next(error);
 		}
 		else {
@@ -1257,10 +1623,10 @@ router.get('/api/hotline', verifyToken, function(req, res, next){
 					connection.release();
 					error.type = "connection.query"
 					error.path = "GET /api/hotline";
-					error.identity = "[USER]" + req.user_id;
+					error.identity = "[USER] " + req.user_id;
 					error.time = getDateString();
 					error.status = 500;
-					error.display_message = "서버 문제로 에러가 발생하였습니다. 빠른 시일내로 조치하도록 하겠습니다. 문의 전화: 02-540-7912 이메일: codingbabyfood@gmail.com"
+					error.display_message = "서버 문제로 에러가 발생하였습니다."
 					error.query_index = 1;
 					next(error);
                 }
@@ -1283,10 +1649,10 @@ router.get('/api/hotline', verifyToken, function(req, res, next){
 								connection.release();
 								error.type = "connection.query"
 								error.path = "GET /api/hotline";
-								error.identity = "[USER]" + req.user_id;
+								error.identity = "[USER] " + req.user_id;
 								error.time = getDateString();
 								error.status = 500;
-								error.display_message = "서버 문제로 에러가 발생하였습니다. 빠른 시일내로 조치하도록 하겠습니다. 문의 전화: 02-540-7912 이메일: codingbabyfood@gmail.com"
+								error.display_message = "서버 문제로 에러가 발생하였습니다."
 								error.query_index = 2;
 								next(error);
 							} 
@@ -1306,10 +1672,10 @@ router.get('/api/hotline', verifyToken, function(req, res, next){
 										if (error) {
 											error.type = "connection.query"
 											error.path = "GET /api/hotline";
-											error.identity = "[USER]" + req.user_id;
+											error.identity = "[USER] " + req.user_id;
 											error.time = getDateString();
 											error.status = 500;
-											error.display_message = "서버 문제로 에러가 발생하였습니다. 빠른 시일내로 조치하도록 하겠습니다. 문의 전화: 02-540-7912 이메일: codingbabyfood@gmail.com"
+											error.display_message = "서버 문제로 에러가 발생하였습니다."
 											error.query_index = 3;
 											next(error);
 										} 
@@ -1327,10 +1693,8 @@ router.get('/api/hotline', verifyToken, function(req, res, next){
 													message: "핫라인메세지들을 성공적으로 불러왔고, 이미 모든 메세지가 읽음 표시 되어있습니다. 새로운 메세지가 없습니다.",
 													result : results,
 													result_update: 0
-													
 												});
 											}
-											
 										}
 									});
 								}
@@ -1341,7 +1705,6 @@ router.get('/api/hotline', verifyToken, function(req, res, next){
 										result: results
 									});	
 								}
-								
 							}
 						});
 					}
@@ -1374,10 +1737,10 @@ router.post('/api/hotline', verifyToken, function(req, res, next){
 				}
 				error.type = "pool.getConnection";
 				error.path = "POST /api/hotline";
-				error.identity = "[USER]" + req.user_id;
+				error.identity = "[USER] " + req.user_id;
 				error.time = getDateString();
 				error.status = 500;
-				error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 걸린 문제일 수 있으니, 잠시 후 다시 시도해주시기 바랍니다. <br/> 문의 전화: 02-540-7912 이메일: codingbabyfood@gmail.com"
+				error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 걸린 문제일 수 있으니, 잠시 후 다시 시도해주시기 바랍니다."
 				next(error);
 			}
 			else{
@@ -1388,57 +1751,56 @@ router.post('/api/hotline', verifyToken, function(req, res, next){
 									.where('user.username = ?', req.username)
 									.toString();
 				connection.query(queryString, function(error, results, fields){
-				if (error) {
-					connection.release();
-					error.type = "connection.query"
-					error.path = "POST /api/hotline";
-					error.identity = "[USER]" + req.user_id;
-					error.time = getDateString();
-					error.status = 500;
-					error.display_message = "서버 문제로 에러가 발생하였습니다. 빠른 시일내로 조치하도록 하겠습니다. 문의 전화: 02-540-7912 이메일: codingbabyfood@gmail.com"
-					error.query_index = 1;
-					next(error);
-				} 
-				else {
-					if(results[0]){
-						var date_published = getDateString();
-						var postString = squel.insert({separator: "\n"})
-										    	.into('hotline_message')
-                                                .set('admin_id', results[0].admin_id)
-                                                .set('user_id', results[0].user_id)
-                                                .set('message_content', req.body.message_content)
-                                                .set('is_from_user', 1)
-                                                .set('is_read', 0)
-                                                .set('date_published', date_published)
-                                                .toString();
-						connection.query(postString, function(error, results_message, fields){
-							connection.release();
-							if (error) {
-								error.type = "connection.query"
-								error.path = "POST /api/hotline";
-								error.identity = "[USER]" + req.user_id;
-								error.time = getDateString();
-								error.status = 500;
-								error.display_message = "서버 문제로 에러가 발생하였습니다. 빠른 시일내로 조치하도록 하겠습니다. 문의 전화: 02-540-7912 이메일: codingbabyfood@gmail.com"
-								error.query_index = 2;
-								next(error);
-							} 
-							else {
-								res.status(201).json({
-									message: '핫라인 메세지를 성공적으로 등록하였습니다.',
-									results: results_message
-								});
-							}	
-						});
-					}
-					else{
-						connection.release();
-						res.status(401).json({
-							message: "잘못된 api call; 담당 관리자가 정해지지 않은 상태에서 api call을 하였습니다."
-						})
-					}
-					
-				}
+                    if (error) {
+                        connection.release();
+                        error.type = "connection.query"
+                        error.path = "POST /api/hotline";
+                        error.identity = "[USER] " + req.user_id;
+                        error.time = getDateString();
+                        error.status = 500;
+                        error.display_message = "서버 문제로 에러가 발생하였습니다. 빠른 시일내로 조치하도록 하겠습니다."
+                        error.query_index = 1;
+                        next(error);
+                    } 
+                    else {
+                        if(results[0]){
+                            var date_published = getDateString();
+                            var postString = squel.insert({separator: "\n"})
+                                                    .into('hotline_message')
+                                                    .set('admin_id', results[0].admin_id)
+                                                    .set('user_id', results[0].user_id)
+                                                    .set('message_content', req.body.message_content)
+                                                    .set('is_from_user', 1)
+                                                    .set('is_read', 0)
+                                                    .set('date_published', date_published)
+                                                    .toString();
+                            connection.query(postString, function(error, results_message, fields){
+                                connection.release();
+                                if (error) {
+                                    error.type = "connection.query"
+                                    error.path = "POST /api/hotline";
+                                    error.identity = "[USER] " + req.user_id;
+                                    error.time = getDateString();
+                                    error.status = 500;
+                                    error.display_message = "서버 문제로 에러가 발생하였습니다."
+                                    error.query_index = 2;
+                                    next(error);
+                                } 
+                                else {
+                                    res.status(201).json({
+                                        message: '핫라인 메세지를 성공적으로 등록하였습니다.',
+                                        results: results_message
+                                    });
+                                }	
+                            });
+                        }
+                        else {
+                            connection.release();
+                            res.status(401).json({
+                                message: "잘못된 api call입니다. 담당 관리자가 정해지지 않은 상태에서 api call을 하였습니다."
+                            });
+                        }
+                    }
 				});
 			}
 		});
@@ -1461,11 +1823,11 @@ if(!req.body.user_id || !req.body.message_content){
 					connection.release();
 				}
 				error.type = "pool.getConnection";
-				error.path = "POST /api/hotline";
-				error.identity = "[ADMIN]" + req.admin_id;
+				error.path = "POST /admin/hotline";
+				error.identity = "[ADMIN] " + req.admin_id;
 				error.time = getDateString();
 				error.status = 500;
-				error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 걸린 문제일 수 있으니, 잠시 후 다시 시도해주시기 바랍니다. <br/> 문의 전화: 02-540-7912 이메일: codingbabyfood@gmail.com"
+				error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 걸린 문제일 수 있으니, 잠시 후 다시 시도해주시기 바랍니다."
 				next(error);
             } else {
                 var date_published = getDateString();
@@ -1482,11 +1844,11 @@ if(!req.body.user_id || !req.body.message_content){
                     connection.release();
                     if(error){
                         error.type = "connection.query"
-						error.path = "POST /api/hotline";
-						error.identity = "[USER]" + req.user_id;
+						error.path = "POST /admin/hotline";
+						error.identity = "[ADMIN]" + req.admin_id;
 						error.time = getDateString();
 						error.status = 500;
-                        error.display_message = "서버 문제로 에러가 발생하였습니다. 빠른 시일내로 조치하도록 하겠습니다. 문의 전화: 02-540-7912 이메일: codingbabyfood@gmail.com"
+                        error.display_message = "서버 문제로 에러가 발생하였습니다. 빠른 시일내로 조치하도록 하겠습니다."
                         error.query_index = 2;
                         next(error);
                     } else {
@@ -1504,6 +1866,10 @@ if(!req.body.user_id || !req.body.message_content){
 
 router.use(function(error, req, res, next){   
     
+    error.params = req.params;
+    error.body = req.body;
+    error.route = req.route;
+    error.originalUrl = req.originalUrl;
     next(error);
     
 });
