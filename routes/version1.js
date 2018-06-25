@@ -24,14 +24,12 @@ router.post('/api/login', function(req, res, next){
             error_message: "REQUIRED FIELDS : (username, password)",
             user_error_message: "필수 항목을 모두 입력하십시오."
         });
-    }
-    else if(req.body.username.length > 20 || req.body.username.length < 4 || req.body.password.length > 20 ||  req.body.password.length < 4){
+    } else if(req.body.username.length > 20 || req.body.username.length < 4 || req.body.password.length > 20 ||  req.body.password.length < 4){
         res.status(401).json({
             error_type: "Data Integrity Violation",
             error_message: "username과 password는 4~20자리이어야 합니다."
         });
-    }
-    else{
+    } else {
         pool.getConnection(function(error, connection){
             if(error){
                 if(typeof connection !== 'undefined'){
@@ -44,8 +42,7 @@ router.post('/api/login', function(req, res, next){
                 error.status = 500;
                 error.display_message = "데이터베이스상의 문제로 작업이 취소되었습니다. 서버 과부하로 생긴 문제일 수 있으니 잠시 후 다시 시도하세요.";
                 next(error);
-            }
-            else{
+            } else {
                 var queryString = squel.select({separator: "\n"})
                                     .from('user')
                                     .field('user_id')
@@ -64,8 +61,7 @@ router.post('/api/login', function(req, res, next){
                         error.display_message = "서버 문제로 에러가 발생하였습니다.";
                         error.query_index = 1;
                         next(error);
-                    } 
-                    else{
+                    } else {
                         if (results[0]){
                             var password_stored = results[0].password;
                             var passwordIsValid = bcrypt.compareSync(req.body.password, password_stored);
@@ -79,24 +75,21 @@ router.post('/api/login', function(req, res, next){
                                         error.status = 500;
                                         error.display_message = "서버 문제로 에러가 발생하였습니다.";
                                         next(error);
-                                    }
-                                    else{
-                                    res.status(200).json({
-                                        auth: true,
-                                        token: token
-                                    });
+                                    } else {
+                                        res.status(200).json({
+                                            auth: true,
+                                            token: token
+                                        });
                                     }
                                 });
-                            }
-                            else{
+                            } else {
                                 res.status(401).json({
                                     status: "id / 비밀번호가 일치 하지 않습니다.",
                                     auth: false,
                                     token: null
                                 });
                             }
-                        }
-                        else{
+                        } else {
                             res.status(401).json({
                                 status: "해당 아이디가 존재 하지 않습니다.",
                                 auth: false,
@@ -138,8 +131,7 @@ router.post('/api/register', function(req, res, next){
             error_type: "Data Integrity Violation",
             error_message: "입력하신 파라미터 글자 숫자를 참고하세요: username(4~20), password(4~20), phone(~20), email(~30)"
         });
-    }
-    else {
+    } else {
         pool.getConnection(function(error, connection){
             if(error){
                 if(typeof connection !== 'undefined'){
@@ -153,7 +145,7 @@ router.post('/api/register', function(req, res, next){
                 error.display_message = "서버 문제로 에러가 발생하였습니다.";
                 next(error);
             }
-            else{
+            else {
                 var selectString = squel.select({separator:'\n'})
                                         .from('user')
                                         .field('username')
@@ -229,9 +221,7 @@ router.post('/api/register', function(req, res, next){
                             }   
                         });
                     }
-                    
                 });
-                
             }
         });
     }   
@@ -821,29 +811,29 @@ router.put('/admin/change_password', verifyAdminToken, function(req, res, next){
 });
 
 
-// [admin] create service
-router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
+// [admin] create subscription
+router.post('/admin/create_subscription', verifyAdminToken, function(req, res, next){
     /*
     json format
     {
 	"user_id":10,
-	"service_name":"Homepage",
-	"service_start_date":"2018-06-14 12:12:56",
-	"service_end_date":"2018-06-15 16:12:56",
-	"service_details_content":[{"service_details_content":"service details row 1"},
-		    {"service_details_content":"service details row 2"},
-		    {"service_details_content":"service details row 3"}
+	"subscription_name":"Homepage",
+	"subscription_start_date":"2018-06-14 12:12:56",
+	"subscription_end_date":"2018-06-15 16:12:56",
+	"subscription_details_content":[{"subscription_details_content":"subscription details row 1"},
+		    {"subscription_details_content":"subscription details row 2"},
+		    {"subscription_details_content":"subscription details row 3"}
 	    ]
     }
     */
-    if(!req.body.user_id || !req.body.service_name || !req.body.service_start_date || !req.body.service_end_date){
+    if(!req.body.user_id || !req.body.subscription_name || !req.body.subscription_start_date || !req.body.subscription_end_date){
         res.status(401).json({
-            error_message: "REQUIERED FIELDS : (user_id, service_name, service_start_date, service_end_date)"
+            error_message: "REQUIERED FIELDS : (user_id, subscription_name, subscription_start_date, subscription_end_date)"
         });
-    } else if(req.body.service_name.length > 45){
+    } else if(req.body.subscription_name.length > 45){
         res.status(401).json({
             error_type:"Data Integrity Violoation",
-            error_message: "서비스 이름은 45자 이하여야 합니다."
+            error_message: "구독서비스 이름은 45자 이하여야 합니다."
         });
     } else {
         pool.getConnection(function(error, connection){
@@ -852,7 +842,7 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                     connection.release();
                 }
                 error.type = "pool.getConnection";
-                error.path = "POST /admin/create_service";
+                error.path = "POST /admin/create_subscription";
                 error.identity = "[ADMIN] " + req.admin_id;
                 error.time = getDateString();
                 error.status = 500;
@@ -863,7 +853,7 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                     if(error){
                         connection.release();
                         error.type = "connection.beginTransaction";
-                        error.path = "POST /admin/create_service";
+                        error.path = "POST /admin/create_subscription";
                         error.identity = "[ADMIN] " + req.admin_id;
                         error.time = getDateString();
                         error.status = 500;
@@ -871,18 +861,18 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                         next(error);
                     } else {
                         var insertString = squel.insert({separator:'\n'})
-                                                .into('service')
+                                                .into('subscription')
                                                 .set('user_id', req.body.user_id)
-                                                .set('service_name', req.body.service_name)
-                                                .set('service_start_date', req.body.service_start_date)
-                                                .set('service_end_date', req.body.service_end_date)
+                                                .set('subscription_name', req.body.subscription_name)
+                                                .set('subscription_start_date', req.body.subscription_start_date)
+                                                .set('subscription_end_date', req.body.subscription_end_date)
                                                 .toString();
                         connection.query(insertString, function(error, results, fields){
                             if(error){
                                 return connection.rollback(function(){
                                     connection.release();
                                     error.type = "connection.query";
-                                    error.path = "POST /admin/create_service";
+                                    error.path = "POST /admin/create_subscription";
                                     error.identity = "[ADMIN] " + req.admin_id;
                                     error.time = getDateString();
                                     error.status = 500;
@@ -891,14 +881,14 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                                     next(error);
                                 });
                             } else {
-                                var contents = req.body.service_details_content;
+                                var contents = req.body.subscription_details_content;
 
                                 for(var i = 0; i < contents.length; i++){
-                                    contents[i].service_id = results.insertId;
+                                    contents[i].subscription_id = results.insertId;
                                 }
 
                                 var insertString = squel.insert({separator:'\n'})
-                                                        .into('service_details')
+                                                        .into('subscription_details')
                                                         .setFieldsRows(contents)
                                                         .toString();
                                 connection.query(insertString, function(error, results, fields){
@@ -906,7 +896,7 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                                         return connection.rollback(function(){
                                             connection.release();
                                             error.type = "connection.query";
-                                            error.path = "POST /admin/create_service";
+                                            error.path = "POST /admin/create_subscription";
                                             error.identity = "[ADMIN] " + req.admin_id;
                                             error.time = getDateString();
                                             error.status = 500;
@@ -920,7 +910,7 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                                                 return connection.rollback(function(){
                                                     connection.release();
                                                     error.type = "connection.commit";
-                                                    error.path = "POST /admin/create_service";
+                                                    error.path = "POST /admin/create_subscription";
                                                     error.identity = "[ADMIN] " + req.admin_id;
                                                     error.time = getDateString();
                                                     error.status = 500;
@@ -930,7 +920,7 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
                                             }
                                             connection.release();
                                             res.status(200).json({
-                                                message: "해당 서비스가 성공적으로 추가되었습니다."
+                                                message: "해당 구독서비스가 성공적으로 추가되었습니다."
                                             });
                                         });
                                     }
@@ -945,11 +935,11 @@ router.post('/admin/create_service', verifyAdminToken, function(req, res, next){
 });
 
 
-// [admin] delete service
-router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next){
-    if(!req.body.service_id){
+// [admin] delete subscription
+router.delete('/admin/delete_subscription', verifyAdminToken, function(req, res, next){
+    if(!req.body.subscription_id){
         res.status(401).json({
-            error_message: "service_id를 입력하십시오."
+            error_message: "subscription_id를 입력하십시오."
         });
     }
 
@@ -959,7 +949,7 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                 connection.release();
             }
             error.type = "pool.getConnection";
-            error.path = "DELETE /admin/delete_service";
+            error.path = "DELETE /admin/delete_subscription";
             error.identity = "[ADMIN] " + req.admin_id;
             error.time = getDateString();
             error.status = 500;
@@ -971,7 +961,7 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                     return connection.rollback(function(){
                         connection.release();
                         error.type = "connection.beginTransaction";
-                        error.path = "DELETE /admin/delete_service";
+                        error.path = "DELETE /admin/delete_subscription";
                         error.identity = "[ADMIN] " + req.admin_id;
                         error.time = getDateString();
                         error.status = 500;
@@ -980,15 +970,15 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                     });
                 } else {
                     var deleteString = squel.delete({separator:'\n'})
-                                            .from('service_details')
-                                            .where('service_id = ?', req.body.service_id)
+                                            .from('subscription_details')
+                                            .where('subscription_id = ?', req.body.subscription_id)
                                             .toString();
                     connection.query(deleteString, function(error, results, fields){
                         if(error){
                             return connection.rollback(function(){
                                 connection.release();
                                 error.type = "connection.query";
-                                error.path = "DELETE /admin/delete_service";
+                                error.path = "DELETE /admin/delete_subscription";
                                 error.identity = "[ADMIN] " + req.admin_id;
                                 error.time = getDateString();
                                 error.status = 500;
@@ -998,15 +988,15 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                             });
                         } else {
                             var deleteString = squel.delete({separator:'\n'})
-                                                    .from('service')
-                                                    .where('service_id = ?', req.body.service_id)
+                                                    .from('subscription')
+                                                    .where('subscription_id = ?', req.body.subscription_id)
                                                     .toString();
                             connection.query(deleteString, function(error, results, fields){
                                 if(error){
                                     return connection.rollback(function(){
                                         connection.release();
                                         error.type = "connection.query";
-                                        error.path = "DELETE /admin/delete_service";
+                                        error.path = "DELETE /admin/delete_subscription";
                                         error.identity = "[ADMIN] " + req.admin_id;
                                         error.time = getDateString();
                                         error.status = 500;
@@ -1020,7 +1010,7 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                                             connection.rollback(function(){
                                                 connection.release();
                                                 error.type = "connection.commit";
-                                                error.path = "DELETE /admin/delete_service";
+                                                error.path = "DELETE /admin/delete_subscription";
                                                 error.identity = "[ADMIN] " + req.admin_id;
                                                 error.time = getDateString();
                                                 error.status = 500;
@@ -1029,7 +1019,7 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
                                             });
                                         } else {
                                             res.status(200).json({
-                                                message: "성공적으로 해당 서비스를 삭제하였습니다."
+                                                message: "성공적으로 해당 구독서비스를 삭제하였습니다."
                                             });
                                         }
                                     });
@@ -1044,11 +1034,11 @@ router.delete('/admin/delete_service', verifyAdminToken, function(req, res, next
 });
 
 
-// [admin] add service details by service_id
-router.post('/admin/add_service_details', verifyAdminToken, function(req, res, next){
-    if(!req.body.service_id || !req.body.service_details_content){
+// [admin] add subscription details by subscription_id
+router.post('/admin/add_subscription_details', verifyAdminToken, function(req, res, next){
+    if(!req.body.subscription_id || !req.body.subscription_details_content){
         res.status(401).json({
-            error_message: "REQUIRED FEILDS: (service_id, service_details_content)"
+            error_message: "REQUIRED FEILDS: (subscription_id, subscription_details_content)"
         });
     } else {
         pool.getConnection(function(error, connection){
@@ -1057,28 +1047,28 @@ router.post('/admin/add_service_details', verifyAdminToken, function(req, res, n
                     connection.release();
                 }
                 error.type = "pool.getConnection";
-                error.path = "POST /admin/add_service_details";
+                error.path = "POST /admin/add_subscription_details";
                 error.identity = "[ADMIN] " + req.admin_id;
                 error.time = getDateString();
                 error.status = 500;
                 error.display_message = "서버 문제로 에러가 발생하였습니다.";
                 next(error);
             } else {
-                var contents = req.body.service_details_content;
+                var contents = req.body.subscription_details_content;
 
                 for(var i = 0; i < contents.length; i++){
-                    contents[i].service_id = req.body.service_id; 
+                    contents[i].subscription_id = req.body.subscription_id; 
                 }
 
                 var insertString = squel.insert({separator:'\n'})
-                                        .into('service_details')
-                                        .setFieldsRows(req.body.service_details_content)
+                                        .into('subscription_details')
+                                        .setFieldsRows(req.body.subscription_details_content)
                                         .toString();
                 connection.query(insertString, function(error, results, fields){
                     connection.release();
                     if(error){
                         error.type = "connection.query";
-                        error.path = "POST /admin/add_service_details";
+                        error.path = "POST /admin/add_subscription_details";
                         error.identity = "[ADMIN] " + req.admin_id;
                         error.time = getDateString();
                         error.status = 500;
@@ -1087,7 +1077,7 @@ router.post('/admin/add_service_details', verifyAdminToken, function(req, res, n
                         next(error);
                     } else {
                         res.status(200).json({
-                            message: "성공적으로 서비스 정보를 추가했습니다."
+                            message: "성공적으로 구독서비스 정보를 추가했습니다."
                         });
                     }
                 });
@@ -1097,8 +1087,8 @@ router.post('/admin/add_service_details', verifyAdminToken, function(req, res, n
 });
 
 
-// [admin] fetch all service_details for a service
-router.get('/admin/service_details/:service_id', verifyAdminToken, function(req, res, next){
+// [admin] fetch all subscription_details for a subscription
+router.get('/admin/subscription_details/:subscription_id', verifyAdminToken, function(req, res, next){
     if(!req.params){
         res.status(401).json({
             error_message: "req.params is empty"
@@ -1110,7 +1100,7 @@ router.get('/admin/service_details/:service_id', verifyAdminToken, function(req,
                 connection.release();
             }
             error.type = "pool.getConnection";
-            error.path = "GET /admin/service_details/:service_id";
+            error.path = "GET /admin/subscription_details/:subscription_id";
             error.identity = "[ADMIN] " + req.admin_id;
             error.time = getDateString();
             error.status = 500;
@@ -1118,17 +1108,17 @@ router.get('/admin/service_details/:service_id', verifyAdminToken, function(req,
             next(error);
         } else {
             var selectString = squel.select({separator:'\n'})
-                                    .from('service_details')
-                                    .field('service_details_id')
-                                    .field('service_id')
-                                    .field('service_details_content')
-                                    .where('service_id =?', req.params.service_id)
+                                    .from('subscription_details')
+                                    .field('subscription_details_id')
+                                    .field('subscription_id')
+                                    .field('subscription_details_content')
+                                    .where('subscription_id =?', req.params.subscription_id)
                                     .toString();
             connection.query(selectString, function(error, results, fields){
                 connection.release();
                 if(error){
                     error.type = "connection.query";
-                    error.path = "GET /admin/service_details/:service_id";
+                    error.path = "GET /admin/subscription_details/:subscription_id";
                     error.identity = "[ADMIN] " + req.admin_id;
                     error.time = getDateString();
                     error.status = 500;
@@ -1137,7 +1127,7 @@ router.get('/admin/service_details/:service_id', verifyAdminToken, function(req,
                     next(error);
                 } else {
                     res.status(200).json({
-                        message: "성공적으로 요청하신 서비스에 해당하는 서비스 정보를 가져왔습니다.",
+                        message: "성공적으로 요청하신 구독서비스에 해당하는 정보를 가져왔습니다.",
                         results
                     });
                 }
@@ -1147,11 +1137,11 @@ router.get('/admin/service_details/:service_id', verifyAdminToken, function(req,
 });
 
 
-// [admin] delete service details by service_details_id
-router.delete('/admin/delete_service_details', verifyAdminToken, function(req, res, next){
-    if(!req.body.service_details_id){
+// [admin] delete subscription details by subscription_details_id
+router.delete('/admin/delete_subscription_details', verifyAdminToken, function(req, res, next){
+    if(!req.body.subscription_details_id){
         res.status(401).json({
-            error_message: "REQUIRED FIELDS: (service_details_id)"
+            error_message: "REQUIRED FIELDS: (subscription_details_id)"
         });
     }
     pool.getConnection(function(error, connection){
@@ -1160,7 +1150,7 @@ router.delete('/admin/delete_service_details', verifyAdminToken, function(req, r
                 connection.release();
             }
             error.type = "pool.getConnection";
-            error.path = "DELETE /admin/delete_service_details";
+            error.path = "DELETE /admin/delete_subscription_details";
             error.identity = "[ADMIN] " + req.admin_id;
             error.time = getDateString();
             error.status = 500;
@@ -1168,14 +1158,14 @@ router.delete('/admin/delete_service_details', verifyAdminToken, function(req, r
             next(error);
         } else {
             var deleteString = squel.delete({separator:'\n'})
-                                    .from('service_details')
-                                    .where('service_details_id = ?', req.body.service_details_id)
+                                    .from('subscription_details')
+                                    .where('subscription_details_id = ?', req.body.subscription_details_id)
                                     .toString();
             connection.query(deleteString, function(error, results, fields){
                 connection.release();
                 if(error){
                     error.type = "conneciton.query";
-                    error.path = "DELETE /admin/delete_service_details";
+                    error.path = "DELETE /admin/delete_subscription_details";
                     error.identity = "[ADMIN] " + req.admin_id;
                     error.time = getDateString();
                     error.status = 500;
@@ -1184,7 +1174,7 @@ router.delete('/admin/delete_service_details', verifyAdminToken, function(req, r
                     next(error);
                 } else {
                     res.status(200).json({
-                        message: "해당 서비스 정보를 삭제했습니다."
+                        message: "해당 구독서비스 정보를 삭제했습니다."
                     });
                 }
             });
@@ -1195,9 +1185,9 @@ router.delete('/admin/delete_service_details', verifyAdminToken, function(req, r
 
 // [admin] request payment
 router.post('/admin/request_payment', verifyAdminToken, function(req, res, next){
-    if(!req.body.service_id || !req.body.payment_amount){
+    if(!req.body.subscription_id || !req.body.payment_amount){
         res.status(401).json({
-            error_message: "REQUIRED FIELDS: (service_id, payment_amount)"
+            error_message: "REQUIRED FIELDS: (subscription_id, payment_amount)"
         });
     } else {
         pool.getConnection(function(error, connection){
@@ -1214,13 +1204,13 @@ router.post('/admin/request_payment', verifyAdminToken, function(req, res, next)
                 next(error);
             } else {
                 var selectString = squel.select({separator:'\n'})
-                                        .from('service')
+                                        .from('subscription')
                                         .field('user_id')
-                                        .field('service_name')
-                                        .field('service_start_date')
-                                        .field('service_end_date')
-                                        .field('service_details')
-                                        .where('service_id = ?', req.body.service_id)
+                                        .field('subscription_name')
+                                        .field('subscription_start_date')
+                                        .field('subscription_end_date')
+                                        .field('subscription_details')
+                                        .where('subscription_id = ?', req.body.subscription_id)
                                         .toString();
                 connection.query(selectString, function(error, results, fields){
                     if(error){
@@ -1235,8 +1225,8 @@ router.post('/admin/request_payment', verifyAdminToken, function(req, res, next)
                         next(error);
                     } else {
                         var insertString = squel.insert({separator:'\n'})
-                                            .into('service_payment')
-                                            .set('service_id', req.body.service_id)
+                                            .into('subscription_payment')
+                                            .set('subscription_id', req.body.subscription_id)
                                             .set('payment_amount', req.body.payment_amount)
                                             .set('payment_description', req.body.payment_description)
                                             .toString();
@@ -1265,11 +1255,11 @@ router.post('/admin/request_payment', verifyAdminToken, function(req, res, next)
 });
 
 
-// [user] make payment (need to incorporate payment module later)
-router.put('/api/make_payment', verifyToken, function(req, res, next){
-    if(!req.body.payment_id || !req.body.service_id || !req.body.payment_amount){
+// [user] pays certain amount of money (need to incorporate payment module)
+router.put('/api/pay', verifyToken, function(req, res, next){
+    if(!req.body.payment_id || !req.body.subscription_id || !req.body.payment_amount){
         res.status(401).json({
-            error_message: "REQUIRED FIELDS: (payment_id, service_id, payment_amount)"
+            error_message: "REQUIRED FIELDS: (payment_id, subscription_id, payment_amount)"
         });
     }
     pool.getConnection(function(error, connection){
@@ -1286,10 +1276,10 @@ router.put('/api/make_payment', verifyToken, function(req, res, next){
             next(error);
         } else {
             var selectString = squel.select({separator:'\n'})
-                                    .from('service_payment')
+                                    .from('subscription_payment')
                                     .field('payment_amount')
                                     .where('payment_id = ?', req.body.payment_id)
-                                    .where('service_id = ?', req.body.service_id)
+                                    .where('subscription_id = ?', req.body.subscription_id)
                                     .toString();
             connection.query(selectString, function(error, results, fields){
                 if(error){
@@ -1304,9 +1294,9 @@ router.put('/api/make_payment', verifyToken, function(req, res, next){
                     next(error);
                 } else {
                     var selectString = squel.select({separator:'\n'})
-                                            .from('service')
+                                            .from('subscription')
                                             .field('user_id')
-                                            .where('service_id = ?', req.body.service_id)
+                                            .where('subscription_id = ?', req.body.subscription_id)
                                             .toString();
                     connection.query(selectString, function(error, select_results, fields){
                         if(error){
@@ -1321,7 +1311,7 @@ router.put('/api/make_payment', verifyToken, function(req, res, next){
                             next(error);
                         } else {
                             var selectString = squel.select({separator:'\n'})
-                                                    .from('service_payment')
+                                                    .from('subscription_payment')
                                                     .field('payment_amount')
                                                     .where('payment_id = ?', req.body.payment_id)
                                                     .toString();
@@ -1341,7 +1331,7 @@ router.put('/api/make_payment', verifyToken, function(req, res, next){
                                         var paymentLeftover = parseInt(results[0].payment_amount, 10) - parseInt(req.body.payment_amount, 10);
                                         if(paymentLeftover >= 0){
                                             var updateString = squel.update({separator:'\n'})
-                                                                    .table('service_payment')
+                                                                    .table('subscription_payment')
                                                                     .set('payment_amount', paymentLeftover)
                                                                     .where('payment_id = ?', req.body.payment_id)
                                                                     .toString();
@@ -1501,15 +1491,15 @@ router.get('/admin/search_username/:username', verifyAdminToken, function(req, r
 });
 
 
-// [user] views all the services the user signed up for
-router.get('/api/view_services', verifyToken, function(req, res, next){
+// [user] views all the subscriptions the user signed up for
+router.get('/api/view_subscriptions', verifyToken, function(req, res, next){
     pool.getConnection(function(error, connection){
         if(error){
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
             error.type = "pool.getConnection";
-            error.path = "GET /api/view_services";
+            error.path = "GET /api/view_subscriptions";
             error.identity = "[USER] " + req.user_id;
             error.time = getDateString();
             error.status = 500;
@@ -1517,21 +1507,21 @@ router.get('/api/view_services', verifyToken, function(req, res, next){
             next(error);
         } else {
             var selectString = squel.select({separator:'\n'})
-                                    .from('service')
-                                    .left_join('service_details', null, 'service.service_id = service_details.service_id')
-                                    .field('service.service_id')
+                                    .from('subscription')
+                                    .left_join('subscription_details', null, 'subscription.subscription_id = subscription_details.subscription_id')
+                                    .field('subscription.subscription_id')
                                     .field('user_id')
-                                    .field('service_name')
-                                    .field('service_start_date')
-                                    .field('service_end_date')
-                                    .field('service_details_content')
+                                    .field('subscription_name')
+                                    .field('subscription_start_date')
+                                    .field('subscription_end_date')
+                                    .field('subscription_details_content')
                                     .where('user_id = ?', req.user_id)
                                     .toString();
             connection.query(selectString, function(error, results, fields){
                 connection.release();
                 if(error){
                     error.type = "connection.query";
-                    error.path = "GET /api/view_services";
+                    error.path = "GET /api/view_subscriptions";
                     error.identity = "[USER] " + req.user_id;
                     error.time = getDateString();
                     error.status = 500;
@@ -1540,7 +1530,7 @@ router.get('/api/view_services', verifyToken, function(req, res, next){
                     next(error);
                 } else {
                     res.status(200).json({
-                        message: "서비스 내용을 성공적으로 불러왔습니다.",
+                        message: "구독서비스 내용을 성공적으로 불러왔습니다.",
                         results
                     });
                 }
@@ -1550,15 +1540,15 @@ router.get('/api/view_services', verifyToken, function(req, res, next){
 });
 
 
-// [admin] views all the servies a user signed up for
-router.get('/admin/view_services/:user_id', verifyAdminToken, function(req, res, next){
+// [admin] views all the subscriptions a user signed up for
+router.get('/admin/view_subscriptions/:user_id', verifyAdminToken, function(req, res, next){
     pool.getConnection(function(error, connection){
         if(error){
             if(typeof connection !== 'undefined'){
                 connection.release();
             }
             error.type = "pool.getConnection";
-            error.path = "GET /admin/view_services/:user_id";
+            error.path = "GET /admin/view_subscriptions/:user_id";
             error.identity = "[ADMIN] " + req.admin_id;
             error.time = getDateString();
             error.status = 500;
@@ -1566,21 +1556,21 @@ router.get('/admin/view_services/:user_id', verifyAdminToken, function(req, res,
             next(error);
         } else {
             var selectString = squel.select({separator:'\n'})
-                                    .from('service')
-                                    .left_join('service_details', null, 'service.service_id = service_details.service_id')
-                                    .field('service.service_id')
+                                    .from('subscription')
+                                    .left_join('subscription_details', null, 'subscription.subscription_id = subscription_details.subscription_id')
+                                    .field('subscription.subscription_id')
                                     .field('user_id')
-                                    .field('service_name')
-                                    .field('service_start_date')
-                                    .field('service_end_date')
-                                    .field('service_details_content')
+                                    .field('subscription_name')
+                                    .field('subscription_start_date')
+                                    .field('subscription_end_date')
+                                    .field('subscription_details_content')
                                     .where('user_id = ?', req.params.user_id)
                                     .toString();
             connection.query(selectString, function(error, results, fields){
                 connection.release();
                 if(error){
                     error.type = "connection.query";
-                    error.path = "GET /admin/view_services/:user_id";
+                    error.path = "GET /admin/view_subscriptions/:user_id";
                     error.identity = "[ADMIN] " + req.admin_id;
                     error.time = getDateString();
                     error.status = 500;
@@ -1589,7 +1579,7 @@ router.get('/admin/view_services/:user_id', verifyAdminToken, function(req, res,
                     next(error);
                 } else {
                     res.status(200).json({
-                        message: "해당 유저의 서비스정보를 성공적으로 가져왔습니다.",
+                        message: "해당 유저의 구독서비스 정보를 성공적으로 가져왔습니다.",
                         results
                     });
                 }
