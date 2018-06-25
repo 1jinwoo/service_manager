@@ -6,6 +6,15 @@ const squel = require('squel');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
+// rendering index
+router.get('/', function(req, res, next){
+    res.render('index', {title:"leysysMisc"});
+});
+
+// for test login page
+router.get('/api', function(req, res, next){
+    res.render('login', {});
+});
 
 
 // [user] login
@@ -178,8 +187,8 @@ router.post('/api/register', function(req, res, next){
                                                 .set('username', req.body.username)
                                                 .set('password', hashedPassword)
                                                 .set('user_full_name', req.body.user_full_name)
-                                                .set('user_email', req.body.email)
-                                                .set('user_phone', req.body.phone)
+                                                .set('user_email', req.body.user_email)
+                                                .set('user_phone', req.body.user_phone)
                                                 .set('user_address_line1', req.body.user_address_line1)
                                                 .set('user_address_line2', req.body.user_address_line2)
                                                 .set('user_city', req.body.user_city)

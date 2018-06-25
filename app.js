@@ -12,6 +12,10 @@ const cors = require('cors');
 const versionOne = require(path.join(__dirname, '/routes/version1'));
 
 
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'pug');
+
 
 
 app.use(cors());

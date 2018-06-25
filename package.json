@@ -30,15 +30,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/clee8420/ShopApp.git"
+    "url": "git+https://github.com/1jinwoo/service_manager.git"
   },
   "keywords": [
     "Node"
   ],
-  "author": "Max Jaeyoon Lee, Kun Woo Yoo, Jin Woo Won",
+  "author": "Jin Woo Won",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/clee8420/ShopApp/issues"
+    "url": "https://github.com/1jinwoo/service_manager.git"
   },
-  "homepage": "https://github.com/clee8420/ShopApp#readme"
+  "homepage": "https://github.com/1jinwoo/service_manager#readme"
 }
